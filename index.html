@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaMask Sign Message</title>
+</head>
+<body>
+    <h2>MetaMask Sign Message</h2>
+    <button id="signMessage">Sign Message</button>
+    <p><strong>Wallet Address:</strong> <span id="walletAddress"></span></p>
+    <p><strong>Signature:</strong> <span id="signature"></span></p>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script>
+        document.getElementById("signMessage").addEventListener("click", async function () {
+            if (typeof window.ethereum !== "undefined") {
+                try {
+                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    await provider.send("eth_requestAccounts", []);
+                    const signer = provider.getSigner();
+                    const walletAddress = await signer.getAddress();
+                    const message = "Sign this message to authenticate!";
+                    const signature = await signer.signMessage(message);
+
+                    document.getElementById("walletAddress").innerText = walletAddress;
+                    document.getElementById("signature").innerText = signature;
+
+                    console.log("Wallet Address:", walletAddress);
+                    console.log("Signature:", signature);
+                } catch (error) {
+                    console.error("Error signing message:", error);
+                }
+            } else {
+                alert("MetaMask is not installed!");
+            }
+        });
+    </script>
+</body>
+</html>
