@@ -8,8 +8,19 @@ app.use(express.json());
 
 // Connect to Database
 connectDB();
+const allowedOrigins = [
+    "http://localhost:5173",  // Local frontend
+    "https://hourserace-frontend.onrender.com"  // Deployed frontend
+];
+
 app.use(cors({
-    origin: "http://localhost:5173",  // Allow frontend to access backend
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     credentials: true  // Allow sending cookies or authentication headers
 }));
 // Routes
