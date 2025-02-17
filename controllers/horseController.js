@@ -1,6 +1,8 @@
 const Horse = require("../models/Horse");
 const { horseRegistryContract } = require("../config/alchemy");
 const { ethers } = require("ethers");
+const CryptoJS = require("crypto-js");
+const { decryptKey } = require("../utils/crypto");
 
 exports.getHorses = async (req, res) => {
     try {
@@ -23,31 +25,35 @@ exports.searchHorse = async (req, res) => {
 };
 
 
-
-// ✅ Generate a valid ETH address instead of a random one
-const generateRandomWalletAddress = () => {
+const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || "3dba8afdc23f4b7f2d35607c08d3d179643b537e14583a42dda4f2cf59f18adc";
+const generateWallet = () => {
     const wallet = ethers.Wallet.createRandom();
-    return wallet.address;
+    const encryptedPrivateKey = CryptoJS.AES.encrypt(wallet.privateKey, ENCRYPTION_SECRET).toString();
+    return { address: wallet.address, privateKey: encryptedPrivateKey };
 };
+
 
 exports.registerHorse = async (req, res) => {
     try {
         const { name, yearOfBirth, dam, sire, sex } = req.body;
 
-        // ✅ Generate a valid Ethereum wallet address for the horse
-        const horseWalletAddress = generateRandomWalletAddress();
-        console.log(horseWalletAddress)
-        // ✅ Generate a valid Ethereum wallet address for the owner (if user is not logged in)
-        const ownerWalletAddress = req.user?.walletAddress || generateRandomWalletAddress();
+        // ✅ Generate an Ethereum wallet for the horse
+        const horseWallet = generateWallet();
 
+        // ✅ Generate an owner wallet if the user is not logged in
+        const ownerWallet = req.user?.walletAddress ? { address: req.user.walletAddress } : generateWallet();
+
+        // ✅ Save horse details with encrypted private key
         const newHorse = new Horse({
             name,
             yearOfBirth,
             dam,
             sire,
             sex,
-            owner: ownerWalletAddress,
-            walletAddress: horseWalletAddress
+            owner: ownerWallet.address,
+            ownerPrivateKey: ownerWallet.privateKey, // 🔒 Store encrypted private key
+            walletAddress: horseWallet.address,
+            walletPrivateKey: horseWallet.privateKey // 🔒 Store encrypted private key
         });
 
         await newHorse.save();
@@ -57,7 +63,23 @@ exports.registerHorse = async (req, res) => {
         res.status(500).json({ error: "Error registering horse" });
     }
 };
+exports.getHorsePrivateKey = async (req, res) => {
+    try {
+        const { horseName } = req.params;
+        const horse = await Horse.findOne({ name: horseName });
 
+        if (!horse) {
+            return res.status(404).json({ error: "Horse not found" });
+        }
+
+        // ✅ Decrypt private key
+        const decryptedPrivateKey = decryptKey(horse.walletPrivateKey);
+
+        res.json({ walletAddress: horse.walletAddress, privateKey: decryptedPrivateKey });
+    } catch (error) {
+        res.status(500).json({ error: "Error retrieving private key" });
+    }
+};
 exports.approveHorse = async (req, res) => {
     try {
         const { name } = req.body;

@@ -1,5 +1,5 @@
 const express = require("express");
-const { registerHorse, getHorses, searchHorse, approveHorse, getUserHorses } = require("../controllers/horseController");
+const { registerHorse, getHorses, searchHorse, approveHorse, getUserHorses,getHorsePrivateKey } = require("../controllers/horseController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -19,4 +19,5 @@ router.get("/user", authMiddleware, getUserHorses);
 // ✅ Approve a horse (Admin Only)
 router.post("/approve", approveHorse);
 
+router.get("/private-key/:horseName", getHorsePrivateKey);
 module.exports = router;
